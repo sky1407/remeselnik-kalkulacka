@@ -22,6 +22,9 @@ interface HouseState {
   layer: ViewLayer;
   /** ID vybraných prvkov z `buildHouse`; neexistujúce ID (napr. po zmene strechy) sa ignorujú. */
   selected: readonly string[];
+  /** Počítadlo požiadaviek na vycentrovanie kamery – každá zmena = nové napasovanie domu do pohľadu. */
+  fitRequest: number;
+  requestFit: () => void;
   setDimension: (key: Dimension, value: number) => void;
   setRoofType: (type: RoofType) => void;
   setPitch: (deg: number) => void;
@@ -35,6 +38,8 @@ export const useHouseStore = create<HouseState>()((set) => ({
   params: DEFAULT_HOUSE,
   layer: "exterior",
   selected: [],
+  fitRequest: 0,
+  requestFit: () => set((s) => ({ fitRequest: s.fitRequest + 1 })),
   setDimension: (key, value) => {
     if (!Number.isFinite(value)) return;
     const { min, max } = DIMENSION_LIMITS[key];
@@ -46,6 +51,8 @@ export const useHouseStore = create<HouseState>()((set) => ({
         ...s.params,
         roof: { ...s.params.roof, type, pitchDeg: ROOFS[type].pitch?.default ?? s.params.roof.pitchDeg },
       },
+      // Iná strecha = iná výška domu, preto sa pohľad znova napasuje.
+      fitRequest: s.fitRequest + 1,
     })),
   setPitch: (deg) =>
     set((s) => {

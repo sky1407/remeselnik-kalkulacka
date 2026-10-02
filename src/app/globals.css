@@ -10,3 +10,9 @@ body {
   color: #1c1917;
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Bez „gumového“ prečnievania a pull-to-refresh – pri otáčaní modelu prstom sa stránka nesmie hýbať. */
+html,
+body {
+  overscroll-behavior: none;
+}
