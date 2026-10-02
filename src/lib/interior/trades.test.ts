@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { calculateQuote, type WorkItem } from "@/lib/calc/quote";
 import { drywallFraming, drywallItems } from "./drywall";
-import { painterItems } from "./painter";
+import { painterFacadeItems, painterItems } from "./painter";
 import { buildRoom, type RoomSpec } from "./room";
 import { groutKgPerM2, tileBand, tilerItems } from "./tiler";
 import { jobItems } from "./trades";
+import { buildHouse, DEFAULT_HOUSE } from "@/lib/house/house";
 import { DEFAULT_TRADE_SETTINGS } from "./tradeSettings";
 
 const bathroom: RoomSpec = {
@@ -135,3 +136,21 @@ describe("jobItems", () => {
     expect(quote(items).lines.filter((l) => l.label.startsWith("Farba"))).toHaveLength(1);
   });
 });
+
+describe("maliar – fasáda", () => {
+  const house = buildHouse(DEFAULT_HOUSE);
+
+  it("sčíta vybrané steny domu vrátane štítu a použije fasádnu farbu", () => {
+    const front = house.find((e) => e.id === "wall-0")!;
+    const gable = house.find((e) => e.id === "wall-1")!;
+    const items = painterFacadeItems({ elements: house, selected: ["wall-0", "wall-1", "roof-front"] }, DEFAULT_TRADE_SETTINGS.painter);
+    expect(items[0].area).toBeCloseTo(front.netArea + gable.netArea, 2);
+    expect(items[0].material!.id).toBe("facade-paint");
+    expect(items[1].label).toBe("Fasáda – penetrácia");
+  });
+
+  it("bez vybraných stien nič", () => {
+    expect(painterFacadeItems({ elements: house, selected: ["roof-front"] }, DEFAULT_TRADE_SETTINGS.painter)).toEqual([]);
+  });
+});
+

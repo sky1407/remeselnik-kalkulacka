@@ -56,3 +56,46 @@ export function painterItems(input: TradeInput, s: PainterSettings): WorkItem[] 
   }
   return items;
 }
+
+/** Maľba fasády na modeli domu: vybrané obvodové steny (vrátane štítov) bez okien a dverí. */
+export function painterFacadeItems(input: TradeInput, s: PainterSettings): WorkItem[] {
+  const area = selectedArea(input, "wall");
+  if (area === 0) return [];
+  const items: WorkItem[] = [
+    {
+      label: `Fasáda – maľba ${s.layers}×`,
+      area,
+      layers: s.layers,
+      material: {
+        id: "facade-paint",
+        name: `Fasádna farba ${s.facade.paint.size} l`,
+        unit: "l",
+        consumptionPerM2: s.facade.lPerM2,
+        packageSize: s.facade.paint.size,
+        packagePrice: s.facade.paint.price,
+        waste: 0.05,
+      },
+      laborRatePerM2: s.facade.labor,
+      productivityM2PerHour: s.facade.m2PerHour,
+    },
+  ];
+  if (s.primer.enabled) {
+    items.push({
+      label: "Fasáda – penetrácia",
+      area,
+      layers: 1,
+      material: {
+        id: "primer-facade",
+        name: `Fasádna penetrácia ${s.primer.pack.size} l`,
+        unit: "l",
+        consumptionPerM2: s.primer.lPerM2,
+        packageSize: s.primer.pack.size,
+        packagePrice: s.primer.pack.price,
+        waste: 0,
+      },
+      laborRatePerM2: 0,
+      productivityM2PerHour: s.facade.m2PerHour * 3,
+    });
+  }
+  return items;
+}

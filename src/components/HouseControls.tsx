@@ -20,7 +20,7 @@ const DIMENSIONS: { key: Dimension; label: string }[] = [
 ];
 
 /** Ovládanie parametrov domu – každá zmena sa hneď prejaví v 3D aj vo výpočte. */
-export function HouseControls() {
+export function HouseControls({ showFraming = true }: { showFraming?: boolean }) {
   const params = useHouseStore((s) => s.params);
   const setDimension = useHouseStore((s) => s.setDimension);
   const setRoofType = useHouseStore((s) => s.setRoofType);
@@ -71,6 +71,8 @@ export function HouseControls() {
             onChange={setPitch}
           />
         )}
+        {showFraming && (
+          <>
         <Slider
           label={params.roof.type === "flat" ? "Osová vzd. stropníc" : "Osová vzd. krokiev"}
           value={params.rafter.spacing}
@@ -86,6 +88,8 @@ export function HouseControls() {
             display={`${Math.round(params.stud.spacing * 1000)} mm`}
             onChange={(v) => setSpacing("stud", v)}
           />
+        )}
+          </>
         )}
       </div>
     </div>

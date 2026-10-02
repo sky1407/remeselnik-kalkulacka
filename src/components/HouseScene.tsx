@@ -1,6 +1,6 @@
 "use client";
 
-import { Edges, Html, OrbitControls } from "@react-three/drei";
+import { Edges, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { DoubleSide, Vector3, type PerspectiveCamera } from "three";
@@ -8,7 +8,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { BuildingElement } from "@/lib/house/element";
 import { ridgeHeight } from "@/lib/house/roofs";
 import { useHouseStore, type ViewLayer } from "@/lib/houseStore";
-import { COLORS, frameMatrix, Members, TAP_TOLERANCE_PX, toShape } from "./scene3d";
+import { COLORS, frameMatrix, Members, TAP_TOLERANCE_PX, TextLabel, toShape } from "./scene3d";
 
 /** Kóta rozostupu: osová vzdialenosť a svetlá šírka poľa, ktorú remeselník potrebuje vidieť. */
 function SpacingLabel({ el }: { el: BuildingElement }) {
@@ -18,11 +18,13 @@ function SpacingLabel({ el }: { el: BuildingElement }) {
   const spacingMm = Math.round(el.profile.spacing * 1000);
   const clearMm = Math.round((el.profile.spacing - el.profile.width) * 1000);
   return (
-    <Html position={[(axes[1] + axes[2]) / 2, v, -el.profile.depth]} center style={{ pointerEvents: "none" }}>
-      <div className="whitespace-nowrap rounded-md bg-stone-900/85 px-2 py-1 text-xs font-semibold text-white">
-        os {spacingMm} mm · pole {clearMm} mm
-      </div>
-    </Html>
+    <TextLabel
+      text={`os ${spacingMm} mm · pole ${clearMm} mm`}
+      position={[(axes[1] + axes[2]) / 2, v, -el.profile.depth]}
+      height={0.45}
+      background="rgba(28,25,23,0.88)"
+      color="#ffffff"
+    />
   );
 }
 
@@ -179,14 +181,17 @@ interface HouseSceneProps {
   elements: readonly BuildingElement[];
   /** Ktoré prvky sa dajú v aktuálnom remesle vybrať ťuknutím. */
   isSelectable: (el: BuildingElement) => boolean;
+  selected: readonly string[];
+  onToggle: (id: string) => void;
+  /** Vynúti pohľad (maliar fasády konštrukciu nepotrebuje). */
+  forceLayer?: ViewLayer;
 }
 
 /** 3D model domu generovaný z parametrov – exteriér alebo odkrytá konštrukcia. */
-export function HouseScene({ elements, isSelectable }: HouseSceneProps) {
+export function HouseScene({ elements, isSelectable, selected, onToggle, forceLayer }: HouseSceneProps) {
   const params = useHouseStore((s) => s.params);
-  const layer = useHouseStore((s) => s.layer);
-  const selected = useHouseStore((s) => s.selected);
-  const toggleElement = useHouseStore((s) => s.toggleElement);
+  const storedLayer = useHouseStore((s) => s.layer);
+  const layer = forceLayer ?? storedLayer;
 
   const ridge = ridgeHeight(params);
   const size = Math.max(params.length, params.width, ridge);
@@ -210,7 +215,7 @@ export function HouseScene({ elements, isSelectable }: HouseSceneProps) {
           layer={layer}
           selected={selected.includes(el.id)}
           selectable={isSelectable(el)}
-          onToggle={toggleElement}
+          onToggle={onToggle}
         />
       ))}
       {/* Jeden prst otáča, dva prsty posúvajú a približujú; na PC pravé tlačidlo posúva. */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useAppStore, type Trade } from "@/lib/appStore";
+import { useAppStore, type PainterArea, type Trade } from "@/lib/appStore";
 import { buildHouse } from "@/lib/house/house";
 import { useHouseStore, type ViewLayer } from "@/lib/houseStore";
 import { buildRoom } from "@/lib/interior/room";
@@ -11,6 +11,7 @@ import { useTradeSettings } from "@/lib/interior/tradeSettings";
 import { useSettingsStore } from "@/lib/settings";
 import { isCelluloseTarget } from "@/lib/trades/cellulose";
 import { CellulosePanel } from "./CellulosePanel";
+import { FacadePanel, isFacadeWall } from "./FacadePanel";
 import { HouseControls } from "./HouseControls";
 import { HouseScene } from "./HouseScene";
 import { InteriorQuotePanel } from "./InteriorQuotePanel";
@@ -20,6 +21,7 @@ import { RoomScene } from "./RoomScene";
 import { SettingsPanel, VatPanel } from "./SettingsPanel";
 import { TradeSettingsPanel } from "./TradeSettingsPanel";
 import { TravelPanel } from "./TravelPanel";
+import { Segmented } from "./ui";
 
 const TRADES: { value: Trade; label: string; icon: string }[] = [
   { value: "cellulose", label: "Celulóza", icon: "🏠" },
@@ -146,13 +148,22 @@ function CelluloseWorkspace() {
   const layer = useHouseStore((s) => s.layer);
   const setLayer = useHouseStore((s) => s.setLayer);
   const requestFit = useHouseStore((s) => s.requestFit);
+  const selected = useHouseStore((s) => s.selected.cellulose);
+  const toggleElement = useHouseStore((s) => s.toggleElement);
   // Dom sa skladá raz a zdieľa ho 3D scéna aj výpočet.
   const elements = useMemo(() => buildHouse(params), [params]);
 
   return (
     <Workspace
       sceneLabel="3D model domu"
-      scene={<HouseScene elements={elements} isSelectable={isCelluloseTarget} />}
+      scene={
+        <HouseScene
+          elements={elements}
+          isSelectable={isCelluloseTarget}
+          selected={selected}
+          onToggle={(id) => toggleElement("cellulose", id)}
+        />
+      }
       toolbar={<ViewToggle value={layer} options={HOUSE_LAYERS} onChange={setLayer} />}
       onFit={requestFit}
       title="Fúkaná celulóza – nová ponuka"
@@ -186,6 +197,7 @@ function InteriorWorkspace({ trade }: { trade: InteriorTrade }) {
       onFit={requestFit}
       title={INTERIOR_TRADES[trade].title}
     >
+      {trade === "painter" && <PainterAreaPicker />}
       <RoomPanel room={room} elements={elements} trade={trade} />
       <InteriorQuotePanel room={room} elements={elements} trade={trade} />
       <TradeSettingsPanel trade={trade} />
@@ -193,9 +205,53 @@ function InteriorWorkspace({ trade }: { trade: InteriorTrade }) {
   );
 }
 
+const PAINTER_AREAS = [
+  { value: "interior" as const, label: "Interiér – izby" },
+  { value: "exterior" as const, label: "Exteriér – fasáda" },
+];
+
+/** Maliar: prepínač medzi izbami a fasádou domu. */
+function PainterAreaPicker() {
+  const area = useAppStore((s) => s.painterArea);
+  const setArea = useAppStore((s) => s.setPainterArea);
+  return <Segmented<PainterArea> label="Kde maľuješ" value={area} options={PAINTER_AREAS} onChange={setArea} />;
+}
+
+function FacadeWorkspace() {
+  const params = useHouseStore((s) => s.params);
+  const requestFit = useHouseStore((s) => s.requestFit);
+  const selected = useHouseStore((s) => s.selected.painter);
+  const toggleElement = useHouseStore((s) => s.toggleElement);
+  const elements = useMemo(() => buildHouse(params), [params]);
+
+  return (
+    <Workspace
+      sceneLabel="3D model domu – fasáda"
+      scene={
+        <HouseScene
+          elements={elements}
+          isSelectable={isFacadeWall}
+          selected={selected}
+          onToggle={(id) => toggleElement("painter", id)}
+          forceLayer="exterior"
+        />
+      }
+      toolbar={null}
+      onFit={requestFit}
+      title="Maľovanie fasády – nová ponuka"
+    >
+      <PainterAreaPicker />
+      <HouseControls showFraming={false} />
+      <FacadePanel elements={elements} />
+      <TradeSettingsPanel trade="painter" />
+    </Workspace>
+  );
+}
+
 /** Koreň aplikácie: podľa remesla ukáže dom (celulóza) alebo interiér izieb. */
 export function AppShell() {
   const trade = useAppStore((s) => s.trade);
+  const painterArea = useAppStore((s) => s.painterArea);
 
   // Uložené ceny a izby sa načítajú až v prehliadači, aby sa nelíšil serverový a klientsky HTML.
   useEffect(() => {
@@ -204,5 +260,7 @@ export function AppShell() {
     void useRoomStore.persist.rehydrate();
   }, []);
 
-  return trade === "cellulose" ? <CelluloseWorkspace /> : <InteriorWorkspace trade={trade} />;
+  if (trade === "cellulose") return <CelluloseWorkspace />;
+  if (trade === "painter" && painterArea === "exterior") return <FacadeWorkspace />;
+  return <InteriorWorkspace trade={trade} />;
 }

@@ -5,6 +5,8 @@ import { ROOFS, type RoofType } from "@/lib/house/roofs";
 export type ViewLayer = "exterior" | "structure";
 export type Dimension = "length" | "width" | "wallHeight";
 export type ProfileKey = "stud" | "rafter";
+/** Remeslá, ktoré pracujú na modeli domu – každé má vlastný výber plôch. */
+export type HouseTrade = "cellulose" | "painter";
 
 /** Hranice posuvníkov – rovnaké ako v `HouseParamsSchema`, aby UI nikdy nevyrobilo neplatný dom. */
 export const DIMENSION_LIMITS: Record<Dimension, { min: number; max: number; step: number }> = {
@@ -20,8 +22,8 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 interface HouseState {
   params: HouseParams;
   layer: ViewLayer;
-  /** ID vybraných prvkov z `buildHouse`; neexistujúce ID (napr. po zmene strechy) sa ignorujú. */
-  selected: readonly string[];
+  /** ID vybraných prvkov z `buildHouse` pre každé remeslo; neexistujúce ID (napr. po zmene strechy) sa ignorujú. */
+  selected: Record<HouseTrade, readonly string[]>;
   /** Počítadlo požiadaviek na vycentrovanie kamery – každá zmena = nové napasovanie domu do pohľadu. */
   fitRequest: number;
   requestFit: () => void;
@@ -31,13 +33,13 @@ interface HouseState {
   setConstruction: (c: HouseParams["construction"]) => void;
   setSpacing: (key: ProfileKey, meters: number) => void;
   setLayer: (layer: ViewLayer) => void;
-  toggleElement: (id: string) => void;
+  toggleElement: (trade: HouseTrade, id: string) => void;
 }
 
 export const useHouseStore = create<HouseState>()((set) => ({
   params: DEFAULT_HOUSE,
   layer: "exterior",
-  selected: [],
+  selected: { cellulose: [], painter: [] },
   fitRequest: 0,
   requestFit: () => set((s) => ({ fitRequest: s.fitRequest + 1 })),
   setDimension: (key, value) => {
@@ -68,11 +70,15 @@ export const useHouseStore = create<HouseState>()((set) => ({
     }));
   },
   setLayer: (layer) => set({ layer }),
-  // Po výbere plochy sa prepne na konštrukciu, aby remeselník hneď videl polia medzi krokvami.
-  toggleElement: (id) =>
-    set((s) =>
-      s.selected.includes(id)
-        ? { selected: s.selected.filter((x) => x !== id) }
-        : { selected: [...s.selected, id], layer: "structure" },
-    ),
+  toggleElement: (trade, id) =>
+    set((s) => {
+      const current = s.selected[trade];
+      const adding = !current.includes(id);
+      const next = adding ? [...current, id] : current.filter((x) => x !== id);
+      return {
+        selected: { ...s.selected, [trade]: next },
+        // Pri celulóze sa po výbere prepne na konštrukciu, aby remeselník hneď videl polia medzi krokvami.
+        ...(adding && trade === "cellulose" ? { layer: "structure" as const } : {}),
+      };
+    }),
 }));

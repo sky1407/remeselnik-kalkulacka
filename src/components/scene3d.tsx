@@ -1,8 +1,8 @@
 "use client";
 
 import { useThree } from "@react-three/fiber";
-import { useLayoutEffect, useRef } from "react";
-import { Matrix4, Path, Shape, Vector2, Vector3, type InstancedMesh } from "three";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { CanvasTexture, Matrix4, Path, Shape, SRGBColorSpace, Vector2, Vector3, type InstancedMesh } from "three";
 import type { Frame3D } from "@/lib/house/element";
 import type { Member } from "@/lib/house/framing";
 import type { Polygon, Rect } from "@/lib/house/geometry2d";
@@ -77,5 +77,53 @@ export function Members({ members, depth, color = COLORS.wood }: MembersProps) {
       <boxGeometry />
       <meshStandardMaterial color={color} />
     </instancedMesh>
+  );
+}
+
+interface TextLabelProps {
+  text: string;
+  position: readonly [number, number, number];
+  /** Výška štítka vo svete (m). */
+  height?: number;
+  background?: string;
+  color?: string;
+}
+
+/**
+ * Štítok ako sprite s textom nakresleným do textúry – vždy natočený ku kamere, neblokuje ťuknutia.
+ * Nahrádza `Html` z drei, ktorý pri každom skrytí odpájal vlastný React root (chyba v React 19).
+ */
+export function TextLabel({ text, position, height = 0.25, background = "rgba(255,255,255,0.92)", color = "#1c1917" }: TextLabelProps) {
+  const { texture, aspect } = useMemo(() => {
+    const px = 48;
+    const font = `700 ${px}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return { texture: null, aspect: 1 };
+    ctx.font = font;
+    const pad = px * 0.45;
+    canvas.width = Math.ceil(ctx.measureText(text).width + pad * 2);
+    canvas.height = Math.ceil(px * 1.5);
+    // Zmena rozmeru plátna vymaže nastavenia kontextu – font treba nastaviť znova.
+    ctx.font = font;
+    ctx.fillStyle = background;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, canvas.width, canvas.height, px * 0.3);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad, canvas.height / 2);
+    const t = new CanvasTexture(canvas);
+    t.colorSpace = SRGBColorSpace;
+    return { texture: t, aspect: canvas.width / canvas.height };
+  }, [text, background, color]);
+
+  useEffect(() => () => texture?.dispose(), [texture]);
+  if (!texture) return null;
+
+  return (
+    <sprite position={position as [number, number, number]} scale={[height * aspect, height, 1]} renderOrder={10} raycast={() => null}>
+      <spriteMaterial map={texture} depthTest={false} transparent />
+    </sprite>
   );
 }

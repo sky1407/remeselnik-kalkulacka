@@ -1,6 +1,6 @@
 "use client";
 
-import { Edges, Html, OrbitControls } from "@react-three/drei";
+import { Edges, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import { CanvasTexture, DoubleSide, RepeatWrapping, SRGBColorSpace, Vector3, type PerspectiveCamera } from "three";
@@ -13,7 +13,7 @@ import { selectedSurfaces, useRoomStore, type InteriorTrade, type InteriorView }
 import { tileBand } from "@/lib/interior/tiler";
 import { INTERIOR_TRADES } from "@/lib/interior/trades";
 import { useTradeSettings } from "@/lib/interior/tradeSettings";
-import { COLORS, frameMatrix, Members, TAP_TOLERANCE_PX, toShape } from "./scene3d";
+import { COLORS, frameMatrix, Members, TAP_TOLERANCE_PX, TextLabel, toShape } from "./scene3d";
 
 const SURFACE_COLORS = { wall: COLORS.plaster, ceiling: "#fafaf9", floor: "#d6c3a5" } as const;
 /** Výška očí pri pohľade zvnútra (m). */
@@ -127,7 +127,7 @@ function Surface({ el, room, trade, selected, selectable, ghost, showLabel, onTo
       <mesh onClick={interactive ? handleTap : undefined} raycast={interactive ? undefined : () => null}>
         <shapeGeometry args={[shape]} />
         <meshStandardMaterial
-          color={painted ? "#bbf7d0" : SURFACE_COLORS[el.kind as keyof typeof SURFACE_COLORS]}
+          color={painted ? COLORS.selected : SURFACE_COLORS[el.kind as keyof typeof SURFACE_COLORS]}
           side={DoubleSide}
           transparent={ghost}
           opacity={ghost ? 0.12 : 1}
@@ -171,15 +171,13 @@ function Surface({ el, room, trade, selected, selectable, ghost, showLabel, onTo
       )}
 
       {showLabel && el.kind === "wall" && (
-        <Html position={[width / 2, 0.25, 0.05]} center style={{ pointerEvents: "none" }}>
-          <div
-            className={`whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-bold ${
-              selected ? "bg-green-700 text-white" : "bg-white/90 text-stone-800"
-            } ${ghost ? "opacity-50" : ""}`}
-          >
-            {WALL_NAMES[wallIndex]} · {num.format(width)} m
-          </div>
-        </Html>
+        <TextLabel
+          text={`${WALL_NAMES[wallIndex]} · ${num.format(width)} m`}
+          position={[width / 2, 0.3, 0.05]}
+          height={Math.max(0.18, Math.min(0.35, room.length / 18))}
+          background={selected ? "#15803d" : ghost ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.92)"}
+          color={selected ? "#ffffff" : "#1c1917"}
+        />
       )}
     </group>
   );
