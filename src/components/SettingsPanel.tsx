@@ -1,9 +1,10 @@
 "use client";
 
-import { VAT_RATES } from "@/lib/calc/quote";
 import type { CelluloseKind } from "@/lib/house/element";
+import { VAT_RATES } from "@/lib/calc/quote";
 import { LABOR_UNITS, RECOMMENDED_DENSITY, useSettingsStore, type LaborUnit } from "@/lib/settings";
 import { NumberField } from "./NumberField";
+import { Section } from "./ui";
 
 const DENSITY_LABELS: Record<CelluloseKind, string> = {
   ceiling: "Strop – voľné fúkanie",
@@ -12,27 +13,11 @@ const DENSITY_LABELS: Record<CelluloseKind, string> = {
   wall: "Stena drevostavby",
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <details className="group rounded-xl bg-white ring-1 ring-stone-200 open:shadow-sm">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-semibold">
-        {title}
-        <span className="text-stone-400 transition-transform group-open:rotate-180" aria-hidden>
-          ▾
-        </span>
-      </summary>
-      <div className="grid grid-cols-2 gap-3 px-4 pb-4">{children}</div>
-    </details>
-  );
-}
-
-/** Vlastné ceny a technické hodnoty remeselníka – ukladajú sa v zariadení. */
+/** Vlastné ceny a technické hodnoty pre fúkanú celulózu – ukladajú sa v zariadení. */
 export function SettingsPanel() {
   const cellulose = useSettingsStore((s) => s.cellulose);
-  const vat = useSettingsStore((s) => s.vat);
   const setCellulose = useSettingsStore((s) => s.setCellulose);
   const setDensity = useSettingsStore((s) => s.setDensity);
-  const setVat = useSettingsStore((s) => s.setVat);
   const reset = useSettingsStore((s) => s.reset);
 
   return (
@@ -85,31 +70,6 @@ export function SettingsPanel() {
           unit="m³/h"
           onCommit={(m3PerHour) => setCellulose({ m3PerHour })}
         />
-        <label className="col-span-2 flex min-h-12 items-center gap-3 text-sm font-medium">
-          <input
-            type="checkbox"
-            checked={vat.payer}
-            onChange={(e) => setVat({ payer: e.target.checked })}
-            className="h-6 w-6 accent-green-600"
-          />
-          Som platiteľ DPH
-        </label>
-        {vat.payer && (
-          <label className="col-span-2 flex flex-col gap-1 text-sm text-stone-600">
-            Sadzba DPH
-            <select
-              value={vat.rate}
-              onChange={(e) => setVat({ rate: Number(e.target.value) as (typeof VAT_RATES)[number] })}
-              className="h-12 rounded-lg border border-stone-300 bg-white px-3 text-lg font-semibold text-stone-900"
-            >
-              {VAT_RATES.map((r) => (
-                <option key={r} value={r}>
-                  {Math.round(r * 100)} %
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </Section>
 
       <Section title="Objemová hmotnosť a rezervy">
@@ -160,5 +120,40 @@ export function SettingsPanel() {
         </button>
       </Section>
     </div>
+  );
+}
+
+/** DPH platí pre všetky remeslá – preto samostatná sekcia. */
+export function VatPanel() {
+  const vat = useSettingsStore((s) => s.vat);
+  const setVat = useSettingsStore((s) => s.setVat);
+  return (
+    <Section title="DPH">
+      <label className="col-span-2 flex min-h-12 items-center gap-3 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={vat.payer}
+          onChange={(e) => setVat({ payer: e.target.checked })}
+          className="h-6 w-6 accent-green-600"
+        />
+        Som platiteľ DPH
+      </label>
+      {vat.payer && (
+        <label className="col-span-2 flex flex-col gap-1 text-sm text-stone-600">
+          Sadzba DPH
+          <select
+            value={vat.rate}
+            onChange={(e) => setVat({ rate: Number(e.target.value) as (typeof VAT_RATES)[number] })}
+            className="h-12 rounded-lg border border-stone-300 bg-white px-3 text-lg font-semibold text-stone-900"
+          >
+            {VAT_RATES.map((r) => (
+              <option key={r} value={r}>
+                {Math.round(r * 100)} %
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </Section>
   );
 }

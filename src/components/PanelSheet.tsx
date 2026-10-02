@@ -32,6 +32,8 @@ export function PanelSheet({ title, hiddenOnDesktop, children }: PanelSheetProps
   const drag = useRef<{ startY: number; startH: number; moved: boolean } | null>(null);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // Tlačidlá v hlavičke (výber remesla) musia dostať ťuknutie – zachytenie prsta by im ho zobralo.
+    if ((e.target as HTMLElement).closest("button, a, input, select, textarea")) return;
     const sheet = e.currentTarget.parentElement;
     if (!sheet) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -81,7 +83,7 @@ export function PanelSheet({ title, hiddenOnDesktop, children }: PanelSheetProps
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onKeyDown={(e) => {
-          if (e.key !== "Enter" && e.key !== " ") return;
+          if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
           e.preventDefault();
           const snaps = snapHeights();
           const h = height ?? snaps[1];

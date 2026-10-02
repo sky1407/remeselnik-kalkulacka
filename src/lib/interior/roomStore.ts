@@ -67,9 +67,15 @@ interface RoomState extends Persisted {
   requestFit: () => void;
 }
 
+/** Stabilná referencia – selektor Zustandu nesmie pri prázdnom výbere vracať zakaždým nové pole. */
+const NO_SELECTION: readonly string[] = Object.freeze([]);
+
 /** Vybrané plochy izby pre dané remeslo. */
-export const selectedSurfaces = (state: Pick<RoomState, "selected">, trade: InteriorTrade, roomId: string) =>
-  state.selected[selectionKey(trade, roomId)] ?? [];
+export const selectedSurfaces = (
+  state: Pick<RoomState, "selected">,
+  trade: InteriorTrade,
+  roomId: string,
+): readonly string[] => state.selected[selectionKey(trade, roomId)] ?? NO_SELECTION;
 
 export const useRoomStore = create<RoomState>()(
   persist(

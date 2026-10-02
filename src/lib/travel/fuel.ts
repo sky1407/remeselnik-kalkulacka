@@ -105,3 +105,22 @@ export async function fetchFuelPrices(now = new Date()): Promise<FuelPrices> {
 export function effectiveFuelPrice(override: number | null, type: FuelType, market: FuelPrices | null): number {
   return override ?? (market ?? FALLBACK_FUEL)[type];
 }
+
+interface TravelSettings {
+  distanceKmOneWay: number;
+  trips: number;
+  ratePerKm: number;
+  consumptionL100: number;
+  fuelType: FuelType;
+  fuelPriceOverride: number | null;
+}
+
+/** Doprava pre `calculateQuote` z nastavení remeselníka a aktuálnej ceny paliva. */
+export function travelForQuote(t: TravelSettings, market: FuelPrices | null) {
+  return {
+    distanceKmOneWay: t.distanceKmOneWay,
+    trips: t.trips,
+    ratePerKm: t.ratePerKm,
+    fuel: { consumptionL100: t.consumptionL100, pricePerL: effectiveFuelPrice(t.fuelPriceOverride, t.fuelType, market) },
+  };
+}

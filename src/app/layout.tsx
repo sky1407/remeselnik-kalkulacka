@@ -9,7 +9,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "Remeselník – kalkulačka ponuky",
-  description: "Ťukni na strechu alebo stenu v 3D modeli domu a hneď vidíš materiál, prácu a cenu.",
+  description: "Celulóza, maliar, obkladač, sadrokartón – ťukni na plochu v 3D a hneď vidíš materiál, prácu a cenu.",
 };
 
 export const viewport: Viewport = {
