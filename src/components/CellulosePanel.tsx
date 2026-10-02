@@ -5,7 +5,10 @@ import { calculateQuote } from "@/lib/calc/quote";
 import { eur, num } from "@/lib/format";
 import type { BuildingElement } from "@/lib/house/element";
 import { useHouseStore } from "@/lib/houseStore";
-import { celluloseFor, celluloseWorkItems, DEFAULT_CELLULOSE, isCelluloseTarget } from "@/lib/trades/cellulose";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { celluloseFor, celluloseWorkItems, isCelluloseTarget } from "@/lib/trades/cellulose";
+
+const DEFAULT_CELLULOSE = DEFAULT_SETTINGS.cellulose;
 
 /** Výber plôch na zateplenie a priebežný výpočet celulózy s cenovou ponukou. */
 export function CellulosePanel({ elements }: { elements: readonly BuildingElement[] }) {

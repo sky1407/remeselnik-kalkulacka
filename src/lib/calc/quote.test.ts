@@ -83,4 +83,20 @@ describe("calculateQuote", () => {
   ])("odmietne neplatný vstup: %s", (_, overrides) => {
     expect(() => calculateQuote(baseInput(overrides))).toThrow(ZodError);
   });
+
+  it("pripočíta palivo podľa spotreby a ceny za liter", () => {
+    const q = calculateQuote(
+      baseInput({ travel: { distanceKmOneWay: 25, trips: 2, fuel: { consumptionL100: 8, pricePerL: 1.95 } } }),
+    );
+    const fuel = q.lines.find((l) => l.unit === "l")!;
+    expect(fuel.quantity).toBe(8); // 100 km × 8 l / 100
+    expect(fuel.totalCents).toBe(1560);
+  });
+
+  it("nulová spotreba palivo nepridá", () => {
+    const q = calculateQuote(
+      baseInput({ travel: { distanceKmOneWay: 25, trips: 1, fuel: { consumptionL100: 0, pricePerL: 1.95 } } }),
+    );
+    expect(q.lines.filter((l) => l.kind === "travel")).toHaveLength(1);
+  });
 });
