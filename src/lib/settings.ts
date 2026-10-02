@@ -2,7 +2,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_RATE_PER_KM, VAT_RATES } from "@/lib/calc/quote";
-import type { ElementKind } from "@/lib/house/element";
+import type { CelluloseKind } from "@/lib/house/element";
 import { PointSchema } from "@/lib/travel/maps";
 
 const range = (min: number, max: number) => z.number().finite().min(min).max(max);
@@ -11,7 +11,7 @@ export const LABOR_UNITS = { m3: "€/m³", kg: "€/kg", m2: "€/m²" } as con
 export type LaborUnit = keyof typeof LABOR_UNITS;
 
 /** Odporúčané rozsahy objemovej hmotnosti podľa ISOCELL – mimo nich aplikácia len upozorní. */
-export const RECOMMENDED_DENSITY: Record<ElementKind, readonly [number, number]> = {
+export const RECOMMENDED_DENSITY: Record<CelluloseKind, readonly [number, number]> = {
   ceiling: [28, 40],
   roof: [38, 65],
   "flat-roof": [38, 65],
@@ -83,7 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 interface SettingsState extends Settings {
   setCellulose: (patch: Partial<Omit<CelluloseSettings, "density">>) => void;
-  setDensity: (kind: ElementKind, value: number) => void;
+  setDensity: (kind: CelluloseKind, value: number) => void;
   setTravel: (patch: Partial<Settings["travel"]>) => void;
   setVat: (patch: Partial<Settings["vat"]>) => void;
   reset: () => void;

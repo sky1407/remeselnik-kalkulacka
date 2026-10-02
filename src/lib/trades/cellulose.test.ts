@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateQuote } from "@/lib/calc/quote";
-import { makeElement, type ElementKind } from "@/lib/house/element";
+import { makeElement, type CelluloseKind } from "@/lib/house/element";
 import type { Polygon } from "@/lib/house/geometry2d";
 import { DEFAULT_SETTINGS, type CelluloseSettings } from "@/lib/settings";
 import { celluloseFor, celluloseWorkItems, isCelluloseTarget } from "./cellulose";
@@ -10,7 +10,7 @@ const DEFAULT_CELLULOSE = DEFAULT_SETTINGS.cellulose;
 const rect = (w: number, h: number): Polygon => [[0, 0], [w, 0], [w, h], [0, h]];
 const frame = { origin: [0, 0, 0], u: [1, 0, 0], v: [0, 1, 0] } as const;
 
-const element = (kind: ElementKind, w: number, h: number, depth: number) =>
+const element = (kind: CelluloseKind, w: number, h: number, depth: number) =>
   makeElement({ id: kind, kind, label: kind, frame, outline: rect(w, h), profile: { width: 0.08, depth, spacing: 0.9 } });
 
 describe("celluloseFor", () => {

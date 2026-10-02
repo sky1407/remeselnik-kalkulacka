@@ -1,11 +1,11 @@
 "use client";
 
 import { VAT_RATES } from "@/lib/calc/quote";
-import type { ElementKind } from "@/lib/house/element";
+import type { CelluloseKind } from "@/lib/house/element";
 import { LABOR_UNITS, RECOMMENDED_DENSITY, useSettingsStore, type LaborUnit } from "@/lib/settings";
 import { NumberField } from "./NumberField";
 
-const DENSITY_LABELS: Record<ElementKind, string> = {
+const DENSITY_LABELS: Record<CelluloseKind, string> = {
   ceiling: "Strop – voľné fúkanie",
   roof: "Šikmá strecha",
   "flat-roof": "Plochá strecha",
@@ -113,7 +113,7 @@ export function SettingsPanel() {
       </Section>
 
       <Section title="Objemová hmotnosť a rezervy">
-        {(Object.keys(DENSITY_LABELS) as ElementKind[]).map((kind) => {
+        {(Object.keys(DENSITY_LABELS) as CelluloseKind[]).map((kind) => {
           const [lo, hi] = RECOMMENDED_DENSITY[kind];
           const v = cellulose.density[kind];
           return (

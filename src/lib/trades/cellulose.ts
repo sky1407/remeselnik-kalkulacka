@@ -23,7 +23,9 @@ const round = (n: number, digits: number) => Math.round(n * 10 ** digits) / 10 *
  * @throws RangeError ak prvok nie je drevená konštrukcia.
  */
 export function celluloseFor(el: BuildingElement, s: CelluloseSettings): CelluloseResult {
-  if (!el.framing || !el.profile) throw new RangeError(`${el.label}: celulóza sa fúka len do drevenej konštrukcie`);
+  if (!el.framing || !el.profile || el.kind === "floor") {
+    throw new RangeError(`${el.label}: celulóza sa fúka len do drevenej konštrukcie`);
+  }
 
   const loose = el.kind === "ceiling";
   const thickness = loose ? s.looseThickness : el.profile.depth;

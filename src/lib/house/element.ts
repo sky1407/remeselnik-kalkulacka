@@ -13,7 +13,10 @@ export interface Frame3D {
   v: Vec3;
 }
 
-export type ElementKind = "wall" | "roof" | "ceiling" | "flat-roof";
+export type ElementKind = "wall" | "roof" | "ceiling" | "flat-roof" | "floor";
+
+/** Plochy, do ktorých sa fúka celulóza – podlaha medzi ne nepatrí. */
+export type CelluloseKind = Exclude<ElementKind, "floor">;
 
 export interface Opening extends Rect {
   kind: "window" | "door";
