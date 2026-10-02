@@ -3,7 +3,7 @@
 import { Edges, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
-import { CanvasTexture, DoubleSide, RepeatWrapping, SRGBColorSpace, Vector3, type PerspectiveCamera } from "three";
+import { CanvasTexture, DoubleSide, Mesh, RepeatWrapping, SRGBColorSpace, Vector3, type PerspectiveCamera } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { num } from "@/lib/format";
 import type { BuildingElement } from "@/lib/house/element";
@@ -19,6 +19,7 @@ const SURFACE_COLORS = { wall: COLORS.plaster, ceiling: "#fafaf9", floor: "#d6c3
 /** Výška očí pri pohľade zvnútra (m). */
 const EYE_HEIGHT = 1.6;
 const SGK_THICKNESS = 0.0125;
+const noRaycast = () => null;
 
 const center = (el: BuildingElement): Vector3 => {
   const w = Math.max(...el.outline.map((p) => p[0]));
@@ -124,7 +125,8 @@ function Surface({ el, room, trade, selected, selectable, ghost, showLabel, onTo
 
   return (
     <group matrix={matrix} matrixAutoUpdate={false}>
-      <mesh onClick={interactive ? handleTap : undefined} raycast={interactive ? undefined : () => null}>
+      {/* `raycast` musí byť vždy funkcia – `undefined` by po zmene z priesvitnej steny vypol ťukanie natrvalo. */}
+      <mesh onClick={interactive ? handleTap : undefined} raycast={interactive ? Mesh.prototype.raycast : noRaycast}>
         <shapeGeometry args={[shape]} />
         <meshStandardMaterial
           color={painted ? COLORS.selected : SURFACE_COLORS[el.kind as keyof typeof SURFACE_COLORS]}
@@ -185,7 +187,10 @@ function Surface({ el, room, trade, selected, selectable, ghost, showLabel, onTo
 
 const DOLLHOUSE_DIRECTION = new Vector3(0.55, 0.95, 0.75).normalize();
 
-/** Domček: izba zhora celá v zábere. Zvnútra: kamera vo výške očí, prstom sa obzeráš okolo. */
+/**
+ * Kamera izby s rovnakým ovládaním ako model domu (otáčanie, koliesko / dva prsty, posúvanie).
+ * „Domček“ a „Zvnútra“ sú len východiskové polohy – do izby sa dá kedykoľvek priblížiť aj ručne.
+ */
 function RoomCamera({ room, view }: { room: RoomSpec; view: InteriorView }) {
   const get = useThree((s) => s.get);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
@@ -197,9 +202,10 @@ function RoomCamera({ room, view }: { room: RoomSpec; view: InteriorView }) {
     const camera = cam as PerspectiveCamera;
     const { length: l, width: w, height: h } = useRoomStore.getState().rooms.find((r) => r.id === room.id) ?? room;
     if (view === "inside") {
-      camera.fov = 75;
-      controls.target.set(0, EYE_HEIGHT, 0);
-      camera.position.set(0.01, EYE_HEIGHT, 0.01);
+      // Z rohu medzi stenami C a D vo výške očí – vidno protiľahlé steny A, B aj kus stropu a podlahy.
+      camera.fov = 65;
+      controls.target.set(0, Math.min(EYE_HEIGHT, h * 0.55), 0);
+      camera.position.set(-(l / 2) * 0.75, Math.min(EYE_HEIGHT, h - 0.3), (w / 2) * 0.75);
     } else {
       camera.fov = 45;
       const radius = 0.5 * Math.hypot(l, w, h);
@@ -215,6 +221,29 @@ function RoomCamera({ room, view }: { room: RoomSpec; view: InteriorView }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitRequest, view, room.id, controls, get]);
 
+  // Posúvaním sa nedá odísť od izby tak ďaleko, že by sa stratila.
+  useEffect(() => {
+    if (!controls) return;
+    const clampTarget = () => {
+      const r = useRoomStore.getState().rooms.find((x) => x.id === room.id);
+      if (!r) return;
+      const t = controls.target;
+      const clamped = t
+        .clone()
+        .set(
+          Math.min(r.length / 2, Math.max(-r.length / 2, t.x)),
+          Math.min(r.height, Math.max(0, t.y)),
+          Math.min(r.width / 2, Math.max(-r.width / 2, t.z)),
+        );
+      if (clamped.equals(t)) return;
+      const { camera } = get();
+      camera.position.add(clamped.clone().sub(t));
+      t.copy(clamped);
+    };
+    controls.addEventListener("change", clampTarget);
+    return () => controls.removeEventListener("change", clampTarget);
+  }, [controls, get, room.id]);
+
   return null;
 }
 
@@ -229,7 +258,6 @@ export function RoomScene({ room, elements, trade }: RoomSceneProps) {
   const view = useRoomStore((s) => s.view);
   const selected = useRoomStore((s) => selectedSurfaces(s, trade, room.id));
   const toggleSurface = useRoomStore((s) => s.toggleSurface);
-  const inside = view === "inside";
   const kinds = INTERIOR_TRADES[trade].selectableKinds;
   const size = Math.max(room.length, room.width, room.height);
 
@@ -243,20 +271,19 @@ export function RoomScene({ room, elements, trade }: RoomSceneProps) {
         trade={trade}
         selected={selected}
         selectableKinds={kinds}
-        showLabels={!inside}
+        showLabels={view === "dollhouse"}
         onToggle={(id) => toggleSurface(trade, room.id, id)}
       />
+      {/* Rovnaké ovládanie ako pri dome; pod 90° sa dá pozrieť aj na strop zvnútra. */}
       <OrbitControls
         makeDefault
-        enablePan={!inside}
-        enableZoom={!inside}
+        enablePan
+        enableZoom
         screenSpacePanning
-        // Zvnútra sa ťahom „otáča hlava“, preto opačný smer otáčania.
-        rotateSpeed={inside ? -0.45 : 1}
-        minDistance={inside ? 0.01 : size * 0.3}
-        maxDistance={inside ? 0.02 : size * 5}
-        minPolarAngle={inside ? 0.05 : 0}
-        maxPolarAngle={inside ? Math.PI - 0.05 : Math.PI * 0.49}
+        enableDamping={false}
+        minDistance={0.2}
+        maxDistance={size * 5}
+        maxPolarAngle={Math.PI * 0.9}
       />
       <RoomCamera room={room} view={view} />
     </Canvas>
