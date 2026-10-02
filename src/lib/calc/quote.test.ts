@@ -75,6 +75,13 @@ describe("calculateQuote", () => {
     expect(q.lines.map((l) => l.kind)).toEqual(["labor", "travel"]);
   });
 
+  it("položka s nulovou cenou práce pridá len materiál", () => {
+    const q = calculateQuote(
+      baseInput({ travel: undefined, items: [{ label: "Penetrácia", area: 10, layers: 1, material: paint, laborRatePerM2: 0, productivityM2PerHour: 40 }] }),
+    );
+    expect(q.lines.map((l) => l.kind)).toEqual(["material"]);
+  });
+
   it.each<[string, Partial<QuoteInput>]>([
     ["prázdne položky", { items: [] }],
     ["záporný koeficient", { regionCoefficient: -1 }],
