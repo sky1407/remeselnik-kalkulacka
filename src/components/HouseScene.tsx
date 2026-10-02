@@ -2,8 +2,9 @@
 
 import { Edges, Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
-import { DoubleSide, Matrix4, Path, Shape, Vector2, Vector3, type InstancedMesh } from "three";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { DoubleSide, Matrix4, Path, Shape, Vector2, Vector3, type InstancedMesh, type PerspectiveCamera } from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { BuildingElement, Frame3D } from "@/lib/house/element";
 import type { Member } from "@/lib/house/framing";
 import type { Polygon, Rect } from "@/lib/house/geometry2d";
@@ -185,6 +186,58 @@ function ElementView({ el, layer, selected, selectable, onToggle }: ElementViewP
   );
 }
 
+/** Smer pohľadu pri vycentrovaní – spredu zboku a mierne zhora, aby bolo vidno strechu aj fasádu. */
+const FIT_DIRECTION = new Vector3(0.6, 0.5, 0.85).normalize();
+
+/**
+ * Riadi kameru: napasuje dom do stredu pohľadu (pri štarte, zmene strechy a tlačidle „Vycentrovať“)
+ * a pri posúvaní nedovolí odísť od domu tak ďaleko, že by sa stratil.
+ */
+function CameraRig() {
+  const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const invalidate = useThree((s) => s.invalidate);
+  const fitRequest = useHouseStore((s) => s.fitRequest);
+
+  useEffect(() => {
+    if (!controls) return;
+    const { params } = useHouseStore.getState();
+    const ridge = ridgeHeight(params);
+    const radius = 0.5 * Math.hypot(params.length, params.width, ridge);
+    const vFov = (camera.fov * Math.PI) / 180;
+    // Na úzkom mobile je limitujúca šírka, nie výška obrazovky.
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+    const distance = (radius / Math.sin(Math.min(vFov, hFov) / 2)) * 1.05;
+
+    controls.target.set(0, ridge / 2, 0);
+    camera.position.copy(controls.target).addScaledVector(FIT_DIRECTION, distance);
+    controls.update();
+    invalidate();
+  }, [fitRequest, controls, camera, invalidate]);
+
+  useEffect(() => {
+    if (!controls) return;
+    const clampTarget = () => {
+      const { params } = useHouseStore.getState();
+      const t = controls.target;
+      const limit = new Vector3(params.length, ridgeHeight(params), params.width);
+      const clamped = t.clone().set(
+        Math.min(limit.x, Math.max(-limit.x, t.x)),
+        Math.min(limit.y, Math.max(0, t.y)),
+        Math.min(limit.z, Math.max(-limit.z, t.z)),
+      );
+      if (clamped.equals(t)) return;
+      // Posunie aj kameru, aby sa pohľad pri náraze na hranicu nestočil.
+      camera.position.add(clamped.clone().sub(t));
+      t.copy(clamped);
+    };
+    controls.addEventListener("change", clampTarget);
+    return () => controls.removeEventListener("change", clampTarget);
+  }, [controls, camera]);
+
+  return null;
+}
+
 interface HouseSceneProps {
   elements: readonly BuildingElement[];
   /** Ktoré prvky sa dajú v aktuálnom remesle vybrať ťuknutím. */
@@ -223,13 +276,17 @@ export function HouseScene({ elements, isSelectable }: HouseSceneProps) {
           onToggle={toggleElement}
         />
       ))}
+      {/* Jeden prst otáča, dva prsty posúvajú a približujú; na PC pravé tlačidlo posúva. */}
       <OrbitControls
-        target={[0, ridge / 2, 0]}
-        enablePan={false}
-        minDistance={size * 0.6}
-        maxDistance={size * 4}
+        makeDefault
+        enablePan
+        screenSpacePanning
+        enableDamping={false}
+        minDistance={size * 0.4}
+        maxDistance={size * 5}
         maxPolarAngle={Math.PI * 0.49}
       />
+      <CameraRig />
     </Canvas>
   );
 }
