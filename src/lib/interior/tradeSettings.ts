@@ -30,6 +30,8 @@ export const TradeSettingsSchema = z.object({
     laborWall: price,
     laborCeiling: price,
     m2PerHour: range(1, 100),
+    /** Fasáda: fasádna farba má inú výdatnosť aj cenu a práca je drahšia (lešenie, počasie). */
+    facade: z.object({ lPerM2: range(0.05, 1), paint: PackageSchema, labor: price, m2PerHour: range(1, 100) }),
   }),
   tiler: z.object({
     wallTile: TileSchema,
@@ -85,6 +87,7 @@ export const DEFAULT_TRADE_SETTINGS: TradeSettings = {
     laborWall: 3.5,
     laborCeiling: 4.5,
     m2PerHour: 15,
+    facade: { lPerM2: 0.2, paint: { size: 15, price: 75 }, labor: 7, m2PerHour: 10 },
   },
   tiler: {
     wallTile: { a: 300, b: 600, boxM2: 1.44, pricePerM2: 18 },

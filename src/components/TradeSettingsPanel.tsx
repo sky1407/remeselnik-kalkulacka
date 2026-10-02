@@ -34,6 +34,10 @@ const PAINTER_FIELDS: Field<PainterSettings>[] = [
   { label: "Spotreba penetrácie", unit: "l/m²", min: 0.02, max: 1, get: (s) => s.primer.lPerM2, set: (s, v) => ({ ...s, primer: { ...s.primer, lPerM2: v } }) },
   { label: "Cena penetrácie", unit: "€", min: 0, max: 10000, hint: "za balenie", get: (s) => s.primer.pack.price, set: (s, v) => ({ ...s, primer: { ...s.primer, pack: { ...s.primer.pack, price: v } } }) },
   { label: "Výkon", unit: "m²/h", min: 1, max: 100, get: (s) => s.m2PerHour, set: (s, v) => ({ ...s, m2PerHour: v }) },
+  { label: "Fasáda – cena práce", unit: "€/m²", min: 0, max: 1000, get: (s) => s.facade.labor, set: (s, v) => ({ ...s, facade: { ...s.facade, labor: v } }) },
+  { label: "Fasádna farba – spotreba", unit: "l/m²", min: 0.05, max: 1, hint: "na 1 vrstvu", get: (s) => s.facade.lPerM2, set: (s, v) => ({ ...s, facade: { ...s.facade, lPerM2: v } }) },
+  { label: "Fasádna farba – balenie", unit: "l", min: 0.1, max: 100, get: (s) => s.facade.paint.size, set: (s, v) => ({ ...s, facade: { ...s.facade, paint: { ...s.facade.paint, size: v } } }) },
+  { label: "Fasádna farba – cena", unit: "€", min: 0, max: 10000, hint: "za balenie", get: (s) => s.facade.paint.price, set: (s, v) => ({ ...s, facade: { ...s.facade, paint: { ...s.facade.paint, price: v } } }) },
 ];
 
 const tileFields = (key: "wallTile" | "floorTile", name: string): Field<TilerSettings>[] => [

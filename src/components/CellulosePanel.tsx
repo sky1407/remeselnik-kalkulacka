@@ -13,7 +13,7 @@ import { QuoteSummary } from "./QuoteSummary";
 
 /** Výber plôch na zateplenie a priebežný výpočet celulózy s cenovou ponukou. */
 export function CellulosePanel({ elements }: { elements: readonly BuildingElement[] }) {
-  const selected = useHouseStore((s) => s.selected);
+  const selected = useHouseStore((s) => s.selected.cellulose);
   const toggleElement = useHouseStore((s) => s.toggleElement);
   const cellulose = useSettingsStore((s) => s.cellulose);
   const travel = useSettingsStore((s) => s.travel);
@@ -47,7 +47,7 @@ export function CellulosePanel({ elements }: { elements: readonly BuildingElemen
               key={el.id}
               type="button"
               aria-pressed={active}
-              onClick={() => toggleElement(el.id)}
+              onClick={() => toggleElement("cellulose", el.id)}
               className={`min-h-12 rounded-full border px-4 text-sm font-medium transition-colors ${
                 active ? "border-green-700 bg-green-600 text-white" : "border-stone-300 bg-white text-stone-800"
               }`}

@@ -1,17 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
-import { calculateQuote } from "@/lib/calc/quote";
 import { num } from "@/lib/format";
 import type { BuildingElement } from "@/lib/house/element";
-import { buildRoom, type RoomSpec } from "@/lib/interior/room";
+import type { RoomSpec } from "@/lib/interior/room";
 import { selectedSurfaces, useRoomStore, type InteriorTrade } from "@/lib/interior/roomStore";
 import { tileBand } from "@/lib/interior/tiler";
-import { INTERIOR_TRADES, jobItems, type RoomJob } from "@/lib/interior/trades";
-import { useTradeSettings } from "@/lib/interior/tradeSettings";
-import { useSettingsStore } from "@/lib/settings";
-import { travelForQuote } from "@/lib/travel/fuel";
-import { useFuelPrices } from "@/lib/travel/useFuelPrices";
+import { INTERIOR_TRADES } from "@/lib/interior/trades";
+import { useTradeQuote } from "@/lib/interior/useTradeQuote";
 import { QuoteSummary } from "./QuoteSummary";
 
 interface InteriorQuotePanelProps {
@@ -22,33 +17,14 @@ interface InteriorQuotePanelProps {
 
 /** Výber plôch v aktívnej izbe a ponuka za všetky izby naraz. */
 export function InteriorQuotePanel({ room, elements, trade }: InteriorQuotePanelProps) {
-  const rooms = useRoomStore((s) => s.rooms);
   const selectedAll = useRoomStore((s) => s.selected);
   const toggleSurface = useRoomStore((s) => s.toggleSurface);
-  const tradeSettings = useTradeSettings();
-  const travel = useSettingsStore((s) => s.travel);
-  const vat = useSettingsStore((s) => s.vat);
-  const fuelPrices = useFuelPrices();
   const tradeModule = INTERIOR_TRADES[trade];
 
   const selected = selectedSurfaces({ selected: selectedAll }, trade, room.id);
   const targets = elements.filter((e) => tradeModule.selectableKinds.includes(e.kind));
 
-  const quote = useMemo(() => {
-    const jobs: RoomJob[] = rooms
-      .map((r) => ({ room: r, selected: selectedSurfaces({ selected: selectedAll }, trade, r.id) }))
-      .filter((j) => j.selected.length > 0)
-      .map((j) => ({ ...j, elements: buildRoom(j.room) }));
-    const items = jobItems(trade, jobs, tradeSettings);
-    if (items.length === 0) return null;
-    return calculateQuote({
-      items,
-      regionCoefficient: 1,
-      travel: travelForQuote(travel, fuelPrices),
-      vatPayer: vat.payer,
-      vatRate: vat.rate,
-    });
-  }, [rooms, selectedAll, trade, tradeSettings, travel, vat, fuelPrices]);
+  const quote = useTradeQuote(trade);
 
   /** Pri obklade ukáže plochu pásu, nie celej steny. */
   const areaOf = (el: BuildingElement) =>
