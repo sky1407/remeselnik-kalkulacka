@@ -2,76 +2,13 @@
 
 import { Edges, Html, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { DoubleSide, Matrix4, Path, Shape, Vector2, Vector3, type InstancedMesh, type PerspectiveCamera } from "three";
+import { useEffect, useMemo } from "react";
+import { DoubleSide, Vector3, type PerspectiveCamera } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { BuildingElement, Frame3D } from "@/lib/house/element";
-import type { Member } from "@/lib/house/framing";
-import type { Polygon, Rect } from "@/lib/house/geometry2d";
+import type { BuildingElement } from "@/lib/house/element";
 import { ridgeHeight } from "@/lib/house/roofs";
 import { useHouseStore, type ViewLayer } from "@/lib/houseStore";
-
-/** Posun prsta v px, nad ktorým sa gesto berie ako otáčanie kamery, nie ťuknutie. */
-const TAP_TOLERANCE_PX = 6;
-
-const COLORS = {
-  plaster: "#f5f0e6",
-  masonry: "#d6c7b0",
-  roof: "#3f3f46",
-  wood: "#c8a165",
-  glass: "#93c5fd",
-  door: "#7c4a2d",
-  selected: "#22c55e",
-  selectedDark: "#15803d",
-  ground: "#dfe7d5",
-} as const;
-
-function frameMatrix({ origin, u, v }: Frame3D): Matrix4 {
-  const vu = new Vector3(...u);
-  const vv = new Vector3(...v);
-  const n = vu.clone().cross(vv);
-  return new Matrix4().makeBasis(vu, vv, n).setPosition(...origin);
-}
-
-const rectPoints = (r: Rect) => [
-  new Vector2(r.u0, r.v0),
-  new Vector2(r.u1, r.v0),
-  new Vector2(r.u1, r.v1),
-  new Vector2(r.u0, r.v1),
-];
-
-function toShape(outline: Polygon, holes: readonly Rect[] = []): Shape {
-  const shape = new Shape(outline.map(([x, y]) => new Vector2(x, y)));
-  shape.holes = holes.map((h) => new Path(rectPoints(h)));
-  return shape;
-}
-
-/** Drevené prvky ako jeden InstancedMesh – stovky krokiev a stĺpikov za cenu jedného draw callu. */
-function Members({ members, depth }: { members: readonly Member[]; depth: number }) {
-  const ref = useRef<InstancedMesh>(null);
-  const invalidate = useThree((s) => s.invalidate);
-
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const m = new Matrix4();
-    members.forEach((mem, i) => {
-      m.makeScale(mem.u1 - mem.u0, mem.v1 - mem.v0, depth);
-      m.setPosition((mem.u0 + mem.u1) / 2, (mem.v0 + mem.v1) / 2, -depth / 2);
-      mesh.setMatrixAt(i, m);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-    invalidate();
-  }, [members, depth, invalidate]);
-
-  return (
-    <instancedMesh key={members.length} ref={ref} args={[undefined, undefined, members.length]} raycast={() => null}>
-      <boxGeometry />
-      <meshStandardMaterial color={COLORS.wood} />
-    </instancedMesh>
-  );
-}
+import { COLORS, frameMatrix, Members, TAP_TOLERANCE_PX, toShape } from "./scene3d";
 
 /** Kóta rozostupu: osová vzdialenosť a svetlá šírka poľa, ktorú remeselník potrebuje vidieť. */
 function SpacingLabel({ el }: { el: BuildingElement }) {

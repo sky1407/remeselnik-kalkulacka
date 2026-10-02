@@ -113,17 +113,20 @@ function materialLines(items: readonly WorkItem[]): QuoteLine[] {
 export function calculateQuote(rawInput: QuoteInput): Quote {
   const input = QuoteInputSchema.parse(rawInput);
 
-  const labor = input.items.map((item): QuoteLine => {
-    const unitPrice = round2(item.laborRatePerM2 * input.regionCoefficient);
-    return {
-      kind: "labor",
-      label: item.label,
-      quantity: round2(item.area),
-      unit: "m²",
-      unitPrice,
-      totalCents: toCents(item.area * unitPrice),
-    };
-  });
+  // Čisto materiálová položka (penetrácia, profily) nemá vlastný riadok práce.
+  const labor = input.items
+    .filter((item) => item.laborRatePerM2 > 0)
+    .map((item): QuoteLine => {
+      const unitPrice = round2(item.laborRatePerM2 * input.regionCoefficient);
+      return {
+        kind: "labor",
+        label: item.label,
+        quantity: round2(item.area),
+        unit: "m²",
+        unitPrice,
+        totalCents: toCents(item.area * unitPrice),
+      };
+    });
 
   const travel: QuoteLine[] = [];
   if (input.travel && input.travel.distanceKmOneWay > 0) {
