@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_RATE_PER_KM, VAT_RATES } from "@/lib/calc/quote";
 import type { ElementKind } from "@/lib/house/element";
+import { PointSchema } from "@/lib/travel/maps";
 
 const range = (min: number, max: number) => z.number().finite().min(min).max(max);
 
@@ -19,6 +20,8 @@ export const RECOMMENDED_DENSITY: Record<ElementKind, readonly [number, number]>
 
 const density = range(15, 90);
 
+const PlaceSchema = PointSchema.extend({ label: z.string().min(1).max(200) });
+
 export const SettingsSchema = z.object({
   cellulose: z.object({
     bagKg: range(5, 30),
@@ -31,9 +34,18 @@ export const SettingsSchema = z.object({
     density: z.object({ ceiling: density, roof: density, "flat-roof": density, wall: density }),
   }),
   travel: z.object({
+    /** Dielňa / sklad – odkiaľ remeselník vyráža. */
+    origin: PlaceSchema.nullable(),
+    /** Adresa zákazky. */
+    destination: PlaceSchema.nullable(),
     distanceKmOneWay: range(0, 1000),
     trips: z.number().int().min(1).max(100),
+    /** Základná náhrada za km (amortizácia vozidla). */
     ratePerKm: range(0, 5),
+    consumptionL100: range(0, 40),
+    fuelType: z.enum(["diesel", "petrol95"]),
+    /** Vlastná cena paliva; `null` = aktuálna priemerná cena v SR podľa ŠÚ SR. */
+    fuelPriceOverride: range(0.5, 5).nullable(),
   }),
   vat: z.object({
     payer: z.boolean(),
@@ -56,7 +68,16 @@ export const DEFAULT_SETTINGS: Settings = {
     looseSettling: 0.15,
     density: { ceiling: 32, roof: 45, "flat-roof": 45, wall: 55 },
   },
-  travel: { distanceKmOneWay: 0, trips: 1, ratePerKm: DEFAULT_RATE_PER_KM },
+  travel: {
+    origin: null,
+    destination: null,
+    distanceKmOneWay: 0,
+    trips: 1,
+    ratePerKm: DEFAULT_RATE_PER_KM,
+    consumptionL100: 8,
+    fuelType: "diesel",
+    fuelPriceOverride: null,
+  },
   vat: { payer: false, rate: 0.23 },
 };
 
