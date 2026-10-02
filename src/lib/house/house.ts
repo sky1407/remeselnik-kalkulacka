@@ -72,7 +72,8 @@ function wallFrame(i: WallIndex, l: number, w: number): Frame3D {
   }
 }
 
-function placeOpening(spec: OpeningSpec, wallLength: number): Opening {
+/** Umiestni otvor na stenu; poloha sa obmedzí tak, aby otvor nevyšiel mimo steny. */
+export function placeOpening(spec: OpeningSpec, wallLength: number): Opening {
   const u0 = Math.min(Math.max(spec.position * wallLength - spec.width / 2, 0), wallLength - spec.width);
   return { kind: spec.kind, u0, u1: u0 + spec.width, v0: spec.sill, v1: spec.sill + spec.height };
 }
