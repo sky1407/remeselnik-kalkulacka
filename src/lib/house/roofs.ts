@@ -110,7 +110,7 @@ const flat: RoofModule = {
         // Krytina leží nad stropnicami, teda na opačnej strane ako podhľad.
         cover: {
           outline: [[-o, -o], [p.length + o, -o], [p.length + o, p.width + o], [-o, p.width + o]],
-          offset: -(p.rafter.depth + 0.03),
+          offset: -(p.rafter.depth + 0.09),
         },
       }),
     ];
