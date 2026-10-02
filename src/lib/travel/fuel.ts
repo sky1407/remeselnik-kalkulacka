@@ -100,3 +100,8 @@ export async function fetchFuelPrices(now = new Date()): Promise<FuelPrices> {
   if (!res.ok) throw new Error(`DATAcube vrátil ${res.status}`);
   return { ...parseFuelJsonStat(await res.json()), source: "susr" };
 }
+
+/** Cena paliva do ponuky: vlastná cena remeselníka má prednosť pred priemerom SR. */
+export function effectiveFuelPrice(override: number | null, type: FuelType, market: FuelPrices | null): number {
+  return override ?? (market ?? FALLBACK_FUEL)[type];
+}

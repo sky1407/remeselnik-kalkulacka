@@ -5,27 +5,44 @@ import { calculateQuote } from "@/lib/calc/quote";
 import { eur, num } from "@/lib/format";
 import type { BuildingElement } from "@/lib/house/element";
 import { useHouseStore } from "@/lib/houseStore";
-import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { useSettingsStore } from "@/lib/settings";
 import { celluloseFor, celluloseWorkItems, isCelluloseTarget } from "@/lib/trades/cellulose";
-
-const DEFAULT_CELLULOSE = DEFAULT_SETTINGS.cellulose;
+import { effectiveFuelPrice } from "@/lib/travel/fuel";
+import { useFuelPrices } from "@/lib/travel/useFuelPrices";
 
 /** Výber plôch na zateplenie a priebežný výpočet celulózy s cenovou ponukou. */
 export function CellulosePanel({ elements }: { elements: readonly BuildingElement[] }) {
   const selected = useHouseStore((s) => s.selected);
   const toggleElement = useHouseStore((s) => s.toggleElement);
+  const cellulose = useSettingsStore((s) => s.cellulose);
+  const travel = useSettingsStore((s) => s.travel);
+  const vat = useSettingsStore((s) => s.vat);
+  const fuelPrices = useFuelPrices();
 
   const targets = useMemo(() => elements.filter(isCelluloseTarget), [elements]);
 
   const { results, quote } = useMemo(() => {
-    const results = targets.filter((el) => selected.includes(el.id)).map((el) => celluloseFor(el, DEFAULT_CELLULOSE));
-    const items = celluloseWorkItems(results, DEFAULT_CELLULOSE);
-    // Región, doprava a DPH pribudnú v nastaveniach – zatiaľ cena bez DPH.
-    const quote = items.length
-      ? calculateQuote({ items, regionCoefficient: 1, vatPayer: false, vatRate: 0.23 })
-      : null;
+    const results = targets.filter((el) => selected.includes(el.id)).map((el) => celluloseFor(el, cellulose));
+    const items = celluloseWorkItems(results, cellulose);
+    if (items.length === 0) return { results, quote: null };
+    const quote = calculateQuote({
+      items,
+      // Regionálny koeficient príde s dátami ŠÚ SR – cenu práce si zatiaľ zadáva remeselník sám.
+      regionCoefficient: 1,
+      travel: {
+        distanceKmOneWay: travel.distanceKmOneWay,
+        trips: travel.trips,
+        ratePerKm: travel.ratePerKm,
+        fuel: {
+          consumptionL100: travel.consumptionL100,
+          pricePerL: effectiveFuelPrice(travel.fuelPriceOverride, travel.fuelType, fuelPrices),
+        },
+      },
+      vatPayer: vat.payer,
+      vatRate: vat.rate,
+    });
     return { results, quote };
-  }, [targets, selected]);
+  }, [targets, selected, cellulose, travel, vat, fuelPrices]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -74,11 +91,26 @@ export function CellulosePanel({ elements }: { elements: readonly BuildingElemen
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex items-end justify-between border-t border-stone-200 pt-3">
-            <span className="text-sm text-stone-500">Fúkanie: {num.format(quote.laborHours)} h</span>
-            <span className="text-2xl font-bold tabular-nums">{eur.format(quote.grossCents / 100)}</span>
-          </div>
-          <p className="mt-2 text-xs text-amber-700">Ceny sú zatiaľ ukážkové, bez DPH a dopravy.</p>
+          <dl className="mt-3 space-y-1 border-t border-stone-200 pt-3 text-sm">
+            {vat.payer && (
+              <>
+                <div className="flex justify-between text-stone-600">
+                  <dt>Spolu bez DPH</dt>
+                  <dd className="tabular-nums">{eur.format(quote.netCents / 100)}</dd>
+                </div>
+                <div className="flex justify-between text-stone-600">
+                  <dt>DPH {Math.round(vat.rate * 100)} %</dt>
+                  <dd className="tabular-nums">{eur.format(quote.vatCents / 100)}</dd>
+                </div>
+              </>
+            )}
+            <div className="flex items-end justify-between">
+              <dt className="text-stone-500">
+                {vat.payer ? "Spolu s DPH" : "Spolu (neplatiteľ DPH)"} · fúkanie {num.format(quote.laborHours)} h
+              </dt>
+              <dd className="text-2xl font-bold tabular-nums">{eur.format(quote.grossCents / 100)}</dd>
+            </div>
+          </dl>
         </section>
       ) : (
         <p className="rounded-xl border border-dashed border-stone-300 p-4 text-center text-stone-500">

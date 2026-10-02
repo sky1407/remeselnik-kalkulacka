@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { buildHouse } from "@/lib/house/house";
 import { useHouseStore, type ViewLayer } from "@/lib/houseStore";
+import { useSettingsStore } from "@/lib/settings";
 import { isCelluloseTarget } from "@/lib/trades/cellulose";
 import { CellulosePanel } from "./CellulosePanel";
 import { HouseControls } from "./HouseControls";
 import { HouseScene } from "./HouseScene";
+import { SettingsPanel } from "./SettingsPanel";
+import { TravelPanel } from "./TravelPanel";
 
 const LAYERS: { value: ViewLayer; label: string }[] = [
   { value: "exterior", label: "Exteriér" },
@@ -18,6 +21,11 @@ export function HouseApp() {
   const params = useHouseStore((s) => s.params);
   const layer = useHouseStore((s) => s.layer);
   const setLayer = useHouseStore((s) => s.setLayer);
+
+  // Uložené ceny remeselníka sa načítajú až v prehliadači, aby sa nelíšil serverový a klientsky HTML.
+  useEffect(() => {
+    void useSettingsStore.persist.rehydrate();
+  }, []);
 
   // Dom sa skladá raz a zdieľa ho 3D scéna aj výpočet.
   const elements = useMemo(() => buildHouse(params), [params]);
@@ -46,6 +54,8 @@ export function HouseApp() {
         <h1 className="text-xl font-bold">Fúkaná celulóza – nová ponuka</h1>
         <HouseControls />
         <CellulosePanel elements={elements} />
+        <TravelPanel />
+        <SettingsPanel />
       </div>
     </main>
   );
