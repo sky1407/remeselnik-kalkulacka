@@ -43,6 +43,10 @@ export const QuoteInputSchema = z.object({
       distanceKmOneWay: nonNegative,
       trips: z.number().int().positive(),
       ratePerKm: nonNegative.default(DEFAULT_RATE_PER_KM),
+      /** Palivo navyše k základnej náhrade (ako pri cestovných náhradach podľa zák. 283/2002 Z. z.). */
+      fuel: z
+        .object({ consumptionL100: z.number().finite().min(0).max(40), pricePerL: z.number().finite().min(0).max(5) })
+        .optional(),
     })
     .optional(),
   vatPayer: z.boolean(),
@@ -132,6 +136,18 @@ export function calculateQuote(rawInput: QuoteInput): Quote {
       unitPrice: input.travel.ratePerKm,
       totalCents: toCents(km * input.travel.ratePerKm),
     });
+    const fuel = input.travel.fuel;
+    if (fuel && fuel.consumptionL100 > 0 && fuel.pricePerL > 0) {
+      const liters = round2((km * fuel.consumptionL100) / 100);
+      travel.push({
+        kind: "travel",
+        label: `Palivo (${fuel.consumptionL100} l/100 km)`,
+        quantity: liters,
+        unit: "l",
+        unitPrice: fuel.pricePerL,
+        totalCents: toCents(liters * fuel.pricePerL),
+      });
+    }
   }
 
   const lines = [...materialLines(input.items), ...labor, ...travel];

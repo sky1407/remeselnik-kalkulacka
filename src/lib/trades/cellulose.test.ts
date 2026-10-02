@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { calculateQuote } from "@/lib/calc/quote";
 import { makeElement, type ElementKind } from "@/lib/house/element";
 import type { Polygon } from "@/lib/house/geometry2d";
-import { celluloseFor, celluloseWorkItems, DEFAULT_CELLULOSE, isCelluloseTarget } from "./cellulose";
+import { DEFAULT_SETTINGS, type CelluloseSettings } from "@/lib/settings";
+import { celluloseFor, celluloseWorkItems, isCelluloseTarget } from "./cellulose";
+
+const DEFAULT_CELLULOSE = DEFAULT_SETTINGS.cellulose;
 
 const rect = (w: number, h: number): Polygon => [[0, 0], [w, 0], [w, h], [0, h]];
 const frame = { origin: [0, 0, 0], u: [1, 0, 0], v: [0, 1, 0] } as const;
@@ -53,5 +56,22 @@ describe("celluloseWorkItems + calculateQuote", () => {
     const laborCents = q.lines.filter((l) => l.kind === "labor").reduce((s, l) => s + l.totalCents, 0);
     expect(laborCents / 100).toBeCloseTo(totalM3 * 25, 0);
     expect(q.laborHours).toBeCloseTo(totalM3 / 4, 1);
+  });
+
+  it.each<[CelluloseSettings["laborUnit"], (r: ReturnType<typeof celluloseFor>) => number]>([
+    ["m3", (r) => r.volumeM3 * 30],
+    ["kg", (r) => r.kg * 30],
+    ["m2", (r) => r.element.netArea * 30],
+  ])("cena práce v jednotke %s", (laborUnit, expected) => {
+    const s = { ...DEFAULT_CELLULOSE, laborRate: 30, laborUnit };
+    const r = celluloseFor(element("roof", 12, 10, 0.24), s);
+    const q = calculateQuote({ items: celluloseWorkItems([r], s), regionCoefficient: 1, vatPayer: false, vatRate: 0.23 });
+    const labor = q.lines.find((l) => l.kind === "labor")!;
+    expect(labor.totalCents / 100).toBeCloseTo(expected(r), 0);
+  });
+
+  it("vlastná objemová hmotnosť zmení hmotnosť aj počet vriec", () => {
+    const s = { ...DEFAULT_CELLULOSE, density: { ...DEFAULT_CELLULOSE.density, roof: 50 } };
+    expect(celluloseFor(element("roof", 12, 10, 0.24), s).kg).toBe(1296); // 25,92 m³ × 50
   });
 });

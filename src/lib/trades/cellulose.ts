@@ -1,41 +1,6 @@
 import type { WorkItem } from "@/lib/calc/quote";
-import type { BuildingElement, ElementKind } from "@/lib/house/element";
-
-/**
- * Objemová hmotnosť podľa typu konštrukcie (kg/m³) – stred rozsahov z technických listov ISOCELL:
- * voľné fúkanie 28–40, tlakové fúkanie do uzavretých dutín 38–65.
- */
-export const DENSITY: Record<ElementKind, number> = {
-  ceiling: 32,
-  roof: 45,
-  "flat-roof": 45,
-  wall: 55,
-};
-
-export interface CelluloseSettings {
-  /** Hmotnosť vreca v kg (ISOCELL: 15 kg). */
-  bagKg: number;
-  /** Cena vreca v € bez DPH. */
-  bagPrice: number;
-  /** Cena práce za m³ nafúkaného objemu v € bez DPH. */
-  laborPerM3: number;
-  /** Výkon fúkania v m³/h. */
-  m3PerHour: number;
-  /** Hrúbka voľne fúkanej vrstvy na strop v m (môže byť vyššia ako stropné trámy). */
-  looseThickness: number;
-  /** Rezerva na sadanie pri voľnom fúkaní (0.15 = 15 %). */
-  looseSettling: number;
-}
-
-/** UKÁŽKOVÉ ceny – nahradí ich cenník remeselníka. */
-export const DEFAULT_CELLULOSE: CelluloseSettings = {
-  bagKg: 15,
-  bagPrice: 14,
-  laborPerM3: 25,
-  m3PerHour: 4,
-  looseThickness: 0.3,
-  looseSettling: 0.15,
-};
+import type { BuildingElement } from "@/lib/house/element";
+import type { CelluloseSettings } from "@/lib/settings";
 
 export interface CelluloseResult {
   element: BuildingElement;
@@ -64,7 +29,7 @@ export function celluloseFor(el: BuildingElement, s: CelluloseSettings): Cellulo
   const thickness = loose ? s.looseThickness : el.profile.depth;
   const woodVolume = el.netArea * el.framing.woodFraction * Math.min(thickness, el.profile.depth);
   const volume = (el.netArea * thickness - woodVolume) * (loose ? 1 + s.looseSettling : 1);
-  const density = DENSITY[el.kind];
+  const density = s.density[el.kind];
 
   return {
     element: el,
@@ -74,6 +39,15 @@ export function celluloseFor(el: BuildingElement, s: CelluloseSettings): Cellulo
     density,
     kg: round(volume * density, 1),
   };
+}
+
+/** Množstvo, za ktoré si remeselník účtuje prácu – každý počíta inak. */
+function laborQuantity(r: CelluloseResult, unit: CelluloseSettings["laborUnit"]): number {
+  switch (unit) {
+    case "m3": return r.volumeM3;
+    case "kg": return r.kg;
+    case "m2": return r.element.netArea;
+  }
 }
 
 /** Prevedie výsledky na položky ponuky; vrecia sa zrátajú zo súčtu kg všetkých plôch. */
@@ -93,7 +67,7 @@ export function celluloseWorkItems(results: readonly CelluloseResult[], s: Cellu
         packagePrice: s.bagPrice,
         waste: 0,
       },
-      laborRatePerM2: (s.laborPerM3 * r.volumeM3) / r.element.netArea,
+      laborRatePerM2: (s.laborRate * laborQuantity(r, s.laborUnit)) / r.element.netArea,
       productivityM2PerHour: (s.m3PerHour * r.element.netArea) / r.volumeM3,
     }));
 }
